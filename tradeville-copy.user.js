@@ -6,6 +6,7 @@
 // @match        https://portal.tradeville.ro/portal/trading.htm*
 // @grant        GM_setClipboard
 // @run-at       document-idle
+// @license      MIT
 // ==/UserScript==
 
 (function () {
@@ -38,6 +39,11 @@
     function stripQuotes(value) {
         return value.replace(/^["']+|["']+$/g, '');
     }
+
+    // Per-field cleanup applied after stripQuotes, before the value goes into the JSON.
+    const CLEANERS = {
+        total: (value) => value.replace(/,/g, ''), // "2,024.86" -> "2024.86"
+    };
 
     function getValue(el) {
         if (!el) return '';
@@ -74,7 +80,9 @@
         FIELDS.forEach(({ key, selector }) => {
             const el = document.querySelector(selector);
             if (!el) missing.push(key);
-            result[key] = getValue(el);
+            let value = getValue(el);
+            if (CLEANERS[key]) value = CLEANERS[key](value);
+            result[key] = value;
         });
 
         const json = JSON.stringify(result);

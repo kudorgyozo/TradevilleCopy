@@ -1,11 +1,12 @@
 // ==UserScript==
-// @name         Tradeville Value Copier
-// @namespace    tradeville-copy
+// @name         Tradeville Value Copier New
+// @namespace    tradeville-copy-new
 // @version      1.0
 // @description  Copy selected values from the trading page to the clipboard as JSON via Ctrl+Alt+C
-// @match        https://portal.tradeville.ro/portal/trading.htm*
+// @match        https://portal.tradeville.ro/portal/app/symbol*
 // @grant        GM_setClipboard
 // @run-at       document-idle
+// @license      MIT
 // ==/UserScript==
 
 (function () {
@@ -23,14 +24,12 @@
     // ---------------------------------------------------------------
     const FIELDS = [
         { key: 'name',      selector: '#rootReact [class^=_titleWrapper_] > div > div > p' },
-        { key: 'interest',  selector: '#detaliiTsimOblig > div > div:nth-child(1) > span.denomPrc' },
-        { key: 'maturity',  selector: '#detaliiTsimOblig > div > div:nth-child(3) > span:nth-child(2)' },
-        { key: 'cleanPrice',  selector: '' },
-        { key: 'dirtyPrice',  selector: '' },
-        { key: 'total',  selector: '' },
-        { key: 'count',  selector: '' },
-        
-        // Add more { key: '...', selector: '...' } lines as needed.
+        { key: 'interest',  selector: '#rootReact div[class^=_pricesGrid_] > div:nth-child(12) > div[class^=_valueContainer_]' },
+        { key: 'maturity',  selector: '#rootReact div[class^=_pricesGrid_] > div:nth-child(14) > div[class^=_valueContainer_]' },
+        { key: 'cleanPrice',  selector: 'input[data-testid=limitInputProp]' },
+        { key: 'dirtyPrice',  selector: 'div[class^=_sidebarModal_] > div[class^=_formContainer_] > div > div:nth-child(3) > span:nth-child(2) > p:nth-child(2)' },
+        { key: 'total',  selector: 'span[data-testid=orderAmount]' },
+        { key: 'count',  selector: 'div[data-testid="orderInput"] input[data-testid="orderValue"]' },
     ];
 
     const SHORTCUT = { ctrl: true, alt: true, shift: false, key: 'c' };
@@ -38,6 +37,19 @@
     function stripQuotes(value) {
         return value.replace(/^["']+|["']+$/g, '');
     }
+
+    // Per-field cleanup applied after stripQuotes, before the value goes into the JSON.
+    const CLEANERS = {
+        name: (value) => value.replace(/^Simbol:\s*/i, '').trim(), // "Simbol: R2808AE" -> "R2808AE"
+        interest: (value) => value.replace(/%/g, '').trim(), // "5.45%" -> "5.45"
+        maturity: (value) => {
+            // "02.08.2028" (dd.mm.yyyy) -> "2028-08-02" (yyyy-mm-dd), to match the other script/Sheets format
+            const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+            if (!match) return value;
+            const [, day, month, year] = match;
+            return `${year}-${month}-${day}`;
+        },
+    };
 
     function getValue(el) {
         if (!el) return '';
@@ -74,7 +86,9 @@
         FIELDS.forEach(({ key, selector }) => {
             const el = document.querySelector(selector);
             if (!el) missing.push(key);
-            result[key] = getValue(el);
+            let value = getValue(el);
+            if (CLEANERS[key]) value = CLEANERS[key](value);
+            result[key] = value;
         });
 
         const json = JSON.stringify(result);

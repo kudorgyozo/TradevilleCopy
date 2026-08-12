@@ -16,6 +16,18 @@ const COLUMN_MAP = {
   count: 'H',
 };
 
+// Number format applied to each cell on every write, so a stray paste/edit
+// can never silently leave a cell in the wrong format (e.g. Date) again.
+const FORMAT_MAP = {
+  name: '@',            // plain text
+  interest: '0.00%',    // percent, 2 decimals
+  maturity: 'yyyy-mm-dd', // real date
+  cleanPrice: '0.00',
+  dirtyPrice: '0.00',
+  total: '#,##0.00',
+  count: '0',
+};
+
 function onEdit(e) {
   if (!e || !e.range) return;
 
@@ -38,13 +50,21 @@ function onEdit(e) {
 
   Object.keys(COLUMN_MAP).forEach((key) => {
     const column = COLUMN_MAP[key];
-    sheet.getRange(`${column}${row}`).setValue(normalizeValue(key, data[key]));
+    const cell = sheet.getRange(`${column}${row}`);
+    cell.setNumberFormat(FORMAT_MAP[key] || '@');
+    cell.setValue(normalizeValue(key, data[key]));
   });
 }
 
 function normalizeValue(key, value) {
   if (value === undefined || value === null) return '';
-  if (key === 'maturity') return value; // keep as plain text date; see note below to store as a real Date
+
+  if (key === 'maturity') {
+    const parts = String(value).split('-').map(Number); // "2028-08-02" -> [2028, 8, 2]
+    if (parts.length !== 3 || parts.some(isNaN)) return value; // unexpected format, fall back to raw text
+    const [year, month, day] = parts;
+    return new Date(year, month - 1, day); // built from components, not Date.parse, to avoid UTC/local timezone drift
+  }
 
   const numeric = Number(String(value).replace(/,/g, '')); // strips thousands separators like "3,195.07"
   if (isNaN(numeric)) return value;
