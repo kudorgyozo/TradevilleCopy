@@ -12,8 +12,8 @@ const COLUMN_MAP = {
   maturity: 'C',
   cleanPrice: 'D',
   dirtyPrice: 'E',
-  total: 'G',
-  count: 'H',
+  total: 'F',
+  count: 'G',
 };
 
 // Number format applied to each cell on every write, so a stray paste/edit

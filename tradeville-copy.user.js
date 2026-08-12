@@ -40,18 +40,26 @@
         return value.replace(/^["']+|["']+$/g, '');
     }
 
-    // Per-field cleanup applied after stripQuotes, before the value goes into the JSON.
+    // Per-field cleanup applied to the raw scraped value, before it goes into the JSON.
     const CLEANERS = {
         total: (value) => value.replace(/,/g, ''), // "2,024.86" -> "2024.86"
+        maturity: (value) => {
+            value = stripQuotes(value)
+            // "08.02.2028" (mm.dd.yyyy) -> "2028-08-02" (yyyy-mm-dd), to match the other script/Sheets format
+            const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+            if (!match) return value;
+            const [, month, day, year] = match;
+            return `${year}-${month}-${day}`;
+        },
     };
 
     function getValue(el) {
         if (!el) return '';
         if ('value' in el && el.tagName !== 'DIV' && el.tagName !== 'SPAN') {
-            return stripQuotes(String(el.value).trim());
+            return String(el.value).trim();
         }
 
-        return stripQuotes(el.textContent.trim());
+        return el.textContent.trim();
     }
 
     function showToast(message, isError) {
