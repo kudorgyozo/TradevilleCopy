@@ -30,7 +30,7 @@
         { key: 'dirtyPrice',  selector: '#NewOrderSection .ordinprev span[gi=dirty]' },
         { key: 'total',  selector: '#NewOrderSection .ordinprev span[gi=valord]' },
         { key: 'count',  selector: '#NewOrderSection input[name=cant]' },
-        
+
         // Add more { key: '...', selector: '...' } lines as needed.
     ];
 
